@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+    <style>
+        html{
+            font-family: "Open Sans";
+            font-style: normal;
+            font-variant: normal;
+            font-weight: 500;
+            color: #333;
+            background: #f5f5f5;
+        }
+        .row{
+            clear: both;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .row > div {
+            background-color: #fff;
+        }
+        h1{
+            color: #333;
+        }
+        h2{
+            color: #999;
+            border-bottom: #999 2px solid;
+            padding: 5px;
+            line-height: 1.5em;
+            margin: 0;
+        }
+        p{
+            text-align: center;
+        }
+        table{
+            width: 90%;
+            margin: auto;
+        }
+        th.value{
+            width: 30px;
+        }
+        th{
+            text-transform: uppercase;
+            font-size: 12px;
+            text-align: left;
+        }
+        .main{
+            width: 900px;
+            margin: auto;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+</head>
+<body>
+<div class="main">
+    <h1>Dashboard</h1>
+    <div class="row">
+        <div id="counter_table">
+        </div>
+        <div id="today"></div>
+    </div>
+    <div class="row">
+        <div id="month">
+            <h2>Sales this month</h2>
+        </div>
+    </div>
+    <div class="row">
+        <div id="table">
+            <h2>Data</h2>
+        </div>
+    </div>
+
+</div>
+
+
+
+<script>
+
+    data =
+        [
+            {year: "2013-01", value: 53, category: "pants"},
+            {year: "2013-02", value: 165, category: "pants"},
+            {year: "2013-03", value: 269, category: "pants"},
+            {year: "2013-04", value: 344, category: "pants"},
+            {year: "2013-05", value: 376, category: "shirt"},
+            {year: "2013-06", value: 410, category: "shirt"},
+            {year: "2013-07", value: 421, category: "shirt"},
+            {year: "2013-08", value: 405, category: "shirt"},
+            {year: "2013-09", value: 376, category: "shirt"},
+            {year: "2013-10", value: 359, category: "shoes"},
+            {year: "2013-11", value: 392, category: "shoes"},
+            {year: "2013-12", value: 433, category: "shoes"},
+            {year: "2014-01", value: 455, category: "shoes"},
+            {year: "2014-02", value: 478, category: "shoes"}
+        ];
+
+
+    var margin = {top: 20, right: 20, bottom: 70, left: 40},
+        width = 900 - margin.left - margin.right,
+        height = 300 - margin.top - margin.bottom;
+
+    // Parse the date / time
+    var	parseDate = d3.timeParse("%Y-%m");
+
+    var x = d3.scaleTime().range([0, width]);
+
+    var y = d3.scaleLinear().range([height, 0]);
+
+    var xAxis = d3.axisBottom()
+        .scale(x)
+        .tickFormat(d3.timeFormat("%Y-%m"));
+
+    var yAxis = d3.axisLeft()
+        .scale(y);
+
+    var svg = d3.select("#month").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform",
+            "translate(" + margin.left + "," + margin.top + ")");
+
+    data.forEach(function(d) {
+        d.date = parseDate(d.year);
+        d.value = +d.value;
+    });
+
+    var maxDate = new Date(data[data.length-1].date.getTime());
+    maxDate.setMonth(maxDate.getMonth() + 1);
+
+    x.domain([data[0].date, maxDate]);
+    y.domain([0, d3.max(data, function(d) { return d.value; })]);
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", "-.55em")
+        .attr("transform", "rotate(-90)" );
+
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text("Value ($)");
+
+    var bar_width = Math.round(width / data.length) - 2;
+
+    svg.selectAll("bar")
+        .data(data)
+        .enter().append("rect")
+        .style("fill", "steelblue")
+        .attr("x", function(d) {
+            return x(d.date);
+        })
+        .attr("width", bar_width)
+        .attr("y", function(d) { return y(d.value); })
+        .attr("height", function(d) { return height - y(d.value); });
+
+
+    var table = d3.select('#table').append('table');
+
+    var thead = table.append('thead').append('tr')
+
+        thead.append('th').text("date");
+        thead.append('th').attr("class", "value").text("value");
+
+    var tbody = table.append('tbody')
+    var tr = tbody.selectAll('tr')
+        .data(data).enter()
+        .append('tr');
+
+
+    tr.append('td').html(function(d) { return d.date; });
+    tr.append('td').html(function(d) { return d.value });
+
+    var groupByCategory = d3.nest()
+        .key(function(d) { return d.category; }).sortKeys(d3.ascending)
+        .rollup(function(v) { return v.length; })
+        .entries(data);
+
+    const donut_width = 300,
+        donut_height = 300,
+        donut_radius = 150;
+
+    let arc = d3.arc()
+        .outerRadius(donut_radius - 10)
+        .innerRadius(donut_radius - 40);
+
+    let pie = d3.pie()
+        .sort(null)
+        .value(function(d) { return d.value; });
+
+    var donut = d3.select("#today").append("svg")
+        .attr("width", donut_width)
+        .attr("height", donut_height)
+        .append("g")
+        .attr("transform", "translate(" + donut_width / 2 + "," + donut_height / 2 + ")");
+
+    var g = donut.selectAll(".arc")
+        .data(pie(groupByCategory))
+        .enter().append("g")
+        .attr("class", "arc");
+
+
+    var color = d3.scaleOrdinal()
+        .range(["#98abc5", "#8a89a6", "#7b6888"])
+
+    g.append("path")
+        .attr("d", arc)
+        .style("fill", function(d) {
+            console.log(d)
+            return color(d.data.key);
+        });
+</script>
+
+</body>
+</html>
