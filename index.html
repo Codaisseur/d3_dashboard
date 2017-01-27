@@ -13,18 +13,13 @@
         }
         .row{
             clear: both;
-            margin-bottom: 10px;
             overflow: hidden;
-        }
-        .row > div {
-            background-color: #fff;
         }
         h1{
             color: #333;
         }
         h2{
             color: #999;
-            border-bottom: #999 2px solid;
             padding: 5px;
             line-height: 1.5em;
             margin: 0;
@@ -32,9 +27,34 @@
         p{
             text-align: center;
         }
-        table{
+        #table table{
             width: 90%;
             margin: auto;
+        }
+        #counter_table{
+            float: left;
+        }
+        #counter_table table{
+            width: 500px;
+            margin-right: 50px;
+            margin-top: 40px;
+            margin-left: 20px;
+        }
+        thead tr{
+            color: #999;
+        }
+        tbody tr{
+            height: 40px;
+
+        }
+        tbody td{
+            border-bottom: 1px solid #f5f5f5;
+        }
+        td .legend{
+            border-radius: 50%;
+            height: 20px;
+            width: 20px;
+            display: block;
         }
         th.value{
             width: 30px;
@@ -54,19 +74,21 @@
 <body>
 <div class="main">
     <h1>Dashboard</h1>
+
+    <h2>Total value</h2>
     <div class="row">
-        <div id="counter_table">
-        </div>
+        <div id="counter_table"></div>
         <div id="today"></div>
     </div>
+    <h2>Sales this month</h2>
     <div class="row">
         <div id="month">
-            <h2>Sales this month</h2>
         </div>
     </div>
+
+    <h2>Data</h2>
     <div class="row">
         <div id="table">
-            <h2>Data</h2>
         </div>
     </div>
 
@@ -101,6 +123,7 @@
 
     // Parse the date / time
     var	parseDate = d3.timeParse("%Y-%m");
+    var	formatDate = d3.timeFormat("%Y-%m");
 
     var x = d3.scaleTime().range([0, width]);
 
@@ -156,20 +179,36 @@
     svg.selectAll("bar")
         .data(data)
         .enter().append("rect")
-        .style("fill", "steelblue")
+        .style("fill", "#019875")
         .attr("x", function(d) {
             return x(d.date);
         })
-        .attr("width", bar_width)
+        .attr("width", bar_width-10)
         .attr("y", function(d) { return y(d.value); })
         .attr("height", function(d) { return height - y(d.value); });
 
+    svg.selectAll("label")
+        .data(data)
+        .enter()
+        .append("text")
+        .attr("class", "label")
+        .style("fill", "#019875")
+        .attr("y", function(d) { return y(d.value); })
+        .attr("x", function(d) {
+            return x(d.date);
+        })
+        .attr("dy", "-.35em") //vertical align middle
+        .attr("dx", ".7em") //vertical align middle
+        .text(function(d){
+            return d.value;
+        })
 
     var table = d3.select('#table').append('table');
 
     var thead = table.append('thead').append('tr')
 
         thead.append('th').text("date");
+        thead.append('th').text("category");
         thead.append('th').attr("class", "value").text("value");
 
     var tbody = table.append('tbody')
@@ -178,30 +217,31 @@
         .append('tr');
 
 
-    tr.append('td').html(function(d) { return d.date; });
+    tr.append('td').html(function(d) { return formatDate(d.date); });
+    tr.append('td').html(function(d) { return d.category });
     tr.append('td').html(function(d) { return d.value });
 
     var groupByCategory = d3.nest()
         .key(function(d) { return d.category; }).sortKeys(d3.ascending)
-        .rollup(function(v) { return v.length; })
+        .rollup(function(v) { return d3.sum(v, function(d) {return d.value;})})
         .entries(data);
 
-    const donut_width = 300,
-        donut_height = 300,
-        donut_radius = 150;
+    const donut_width = 250,
+        donut_height = 250,
+        donut_radius = 125;
 
     let arc = d3.arc()
         .outerRadius(donut_radius - 10)
-        .innerRadius(donut_radius - 40);
+        .innerRadius(donut_radius - 60);
 
     let pie = d3.pie()
         .sort(null)
         .value(function(d) { return d.value; });
 
-    var donut = d3.select("#today").append("svg")
+    var donut_svg = d3.select("#today").append("svg")
         .attr("width", donut_width)
         .attr("height", donut_height)
-        .append("g")
+    var donut = donut_svg.append("g")
         .attr("transform", "translate(" + donut_width / 2 + "," + donut_height / 2 + ")");
 
     var g = donut.selectAll(".arc")
@@ -211,14 +251,45 @@
 
 
     var color = d3.scaleOrdinal()
-        .range(["#98abc5", "#8a89a6", "#7b6888"])
+        .range(["#D91E18", "#E87E04", "#F4D03F"])
 
     g.append("path")
         .attr("d", arc)
         .style("fill", function(d) {
-            console.log(d)
             return color(d.data.key);
         });
+
+    donut_svg.append("g")
+        .attr("transform", "translate(" + donut_width / 3 + "," + donut_height / 2 + ")")
+        .append("text")
+        .attr("class", "label")
+        .style("fill", "#333")
+        .style("font-size", "40px")
+        .attr("dy", ".35em") //vertical align middle
+        .text(function(d){
+            return d3.sum(data, function(d) {return d.value;})
+        });
+
+    var counter_table = d3.select('#counter_table').append('table');
+
+    var counter_thead = counter_table.append('thead').append('tr')
+
+    counter_thead.append('th').attr("class", "value");
+    counter_thead.append('th').text("category");
+    counter_thead.append('th').attr("class", "value").text("value");
+
+    var counter_tbody = counter_table.append('tbody')
+    var counter_tr = counter_tbody.selectAll('tr')
+        .data(groupByCategory).enter()
+        .append('tr');
+
+
+
+    counter_tr.append('td').append('span').attr("class", "legend").style("background-color", function(d) {
+        return color(d.key);
+    });
+    counter_tr.append('td').html(function(d) { return d.key; });
+    counter_tr.append('td').html(function(d) { return d.value });
 </script>
 
 </body>
