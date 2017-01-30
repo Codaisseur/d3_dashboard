@@ -87,7 +87,8 @@
         <div id="counter_table"></div>
         <div id="today"></div>
     </div>
-    <h2>Sales this month</h2>
+
+    <h2>Sales every month</h2>
     <div class="row">
         <div id="month">
         </div>
@@ -101,7 +102,35 @@
 
 </div>
 
+[
+    {key: "pants", values:[
+        {year: "2013-01", value: 53, category: "pants"},
+        {year: "2013-02", value: 165, category: "pants"},
+        {year: "2013-03", value: 269, category: "pants"},
+        {year: "2013-04", value: 344, category: "pants"},
+    ]},
+    {key: "shirt", values:[
+        {year: "2013-05", value: 376, category: "shirt"},
+        {year: "2013-06", value: 410, category: "shirt"},
+        {year: "2013-07", value: 421, category: "shirt"},
+        {year: "2013-08", value: 405, category: "shirt"},
+        {year: "2013-09", value: 376, category: "shirt"},
+    ]},
+    {key: "shoes", values:[
+        {year: "2013-10", value: 359, category: "shoes"},
+        {year: "2013-11", value: 392, category: "shoes"},
+        {year: "2013-12", value: 433, category: "shoes"},
+        {year: "2014-01", value: 455, category: "shoes"},
+        {year: "2014-02", value: 478, category: "shoes"}
+    ]}
+];
 
+
+[
+    {key: "pants", value: 831},
+    {key: "shirt", value: 1988},
+    {key: "shoes", value: 2117}
+]
 
 <script>
 
@@ -123,72 +152,83 @@
             {year: "2014-02", value: 478, category: "shoes"}
         ];
 
-
-    var margin = {top: 20, right: 20, bottom: 70, left: 40},
-        width = 900 - margin.left - margin.right,
-        height = 300 - margin.top - margin.bottom;
-
-    // Parse the date / time
     var	parseDate = d3.timeParse("%Y-%m");
-    var	formatDate = d3.timeFormat("%Y-%m");
-
-    var x = d3.scaleTime().range([0, width]);
-
-    var y = d3.scaleLinear().range([height, 0]);
-
-    var xAxis = d3.axisBottom()
-        .scale(x)
-        .tickFormat(d3.timeFormat("%Y-%m"));
-
-    var yAxis = d3.axisLeft()
-        .scale(y)
-        .tickSize(-width)
-        .ticks(3);
-
-    var svg = d3.select("#month").append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-        .append("g")
-        .attr("transform",
-            "translate(" + margin.left + "," + margin.top + ")");
 
     data.forEach(function(d) {
         d.date = parseDate(d.year);
         d.value = +d.value;
     });
 
-    var maxDate = new Date(data[data.length-1].date.getTime());
-    maxDate.setMonth(maxDate.getMonth() + 1);
+    //    ------------------
+    //    TABLE
+    //    ------------------
 
-    x.domain([data[0].date, maxDate]);
-    y.domain([0, d3.max(data, function(d) { return d.value; })]);
+    var	formatDate = d3.timeFormat("%Y-%m");
 
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + height + ")")
-        .call(xAxis)
-        .selectAll("text")
-        .style("text-anchor", "end")
-        .attr("dx", "-.8em")
-        .attr("dy", "-.55em")
-        .attr("transform", "rotate(-90)" );
+    var table = d3.select('#table').append('table');
 
-    svg.append("g")
-        .attr("class", "y axis")
-        .call(yAxis)
+    var tbody = table.append('tbody')
+    var tr = tbody.selectAll('tr')
+        .data(data).enter()
+        .append('tr');
 
-    var bar_width = Math.round(width / data.length) - 2;
 
-    svg.selectAll("bar")
+    tr.append('td').html(function(d) { return formatDate(d.date); });
+    tr.append('td').html(function(d) { return d.category });
+    tr.append('td').html(function(d) { return d.value });
+
+    var thead = table.append('thead').append('tr')
+
+    thead.append('th').text("date");
+    thead.append('th').text("category");
+    thead.append('th').attr("class", "value").text("value");
+
+    //    ------------------
+    //    BARCHART
+    //    ------------------
+
+    var month_margin = {top: 20, right: 20, bottom: 70, left: 40},
+        month_width = 900 - month_margin.left - month_margin.right,
+        month_height = 300 - month_margin.top - month_margin.bottom;
+
+    var svg = d3.select("#month").append("svg")
+        .attr("width", month_width + month_margin.left + month_margin.right)
+        .attr("height", month_height + month_margin.top + month_margin.bottom)
+        .append("g")
+        .attr("transform",
+            "translate(" + month_margin.left + "," + month_margin.top + ")");
+
+    var x = d3.scaleTime().range([0, month_width]).domain([data[0].date, data[data.length-1].date]);
+    var y = d3.scaleLinear().range([month_height, 0]).domain([0, d3.max(data, function(d) { return d.value; })]);
+
+    svg.selectAll("rect")
         .data(data)
         .enter().append("rect")
         .style("fill", "#019875")
         .attr("x", function(d) {
             return x(d.date);
         })
-        .attr("width", bar_width-10)
+        .attr("width", 50)
         .attr("y", function(d) { return y(d.value); })
-        .attr("height", function(d) { return height - y(d.value); });
+        .attr("height", function(d) { return month_height - y(d.value); });
+
+    var yAxis = d3.axisLeft()
+        .scale(y)
+        .tickSize(-month_width)
+        .ticks(3);
+
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis);
+
+    var xAxis = d3.axisBottom()
+        .scale(x)
+        .tickFormat(d3.timeFormat("%Y-%m"));
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + month_height + ")")
+        .call(xAxis);
 
     svg.selectAll("label")
         .data(data)
@@ -204,40 +244,47 @@
         .attr("dx", ".7em") //vertical align middle
         .text(function(d){
             return d.value;
-        })
+        });
 
-    var table = d3.select('#table').append('table');
-
-    var thead = table.append('thead').append('tr')
-
-        thead.append('th').text("date");
-        thead.append('th').text("category");
-        thead.append('th').attr("class", "value").text("value");
-
-    var tbody = table.append('tbody')
-    var tr = tbody.selectAll('tr')
-        .data(data).enter()
-        .append('tr');
-
-
-    tr.append('td').html(function(d) { return formatDate(d.date); });
-    tr.append('td').html(function(d) { return d.category });
-    tr.append('td').html(function(d) { return d.value });
+    //    ------------------
+    //    GROUP AND TABLE
+    //    ------------------
 
     var groupByCategory = d3.nest()
         .key(function(d) { return d.category; }).sortKeys(d3.ascending)
         .rollup(function(v) { return d3.sum(v, function(d) {return d.value;})})
         .entries(data);
 
+
+    var counter_table = d3.select('#counter_table').append('table');
+
+    var counter_thead = counter_table.append('thead').append('tr');
+
+    counter_thead.append('th').text("category");
+    counter_thead.append('th').attr("class", "value").text("value");
+
+    var counter_tbody = counter_table.append('tbody');
+
+    var counter_tr = counter_tbody.selectAll('tr')
+        .data(groupByCategory).enter()
+        .append('tr');
+
+    counter_tr.append('td').html(function(d) { return d.key; });
+    counter_tr.append('td').html(function(d) { return d.value });
+
+    //    ------------------
+    //    DONUT
+    //    ------------------
+
     const donut_width = 250,
         donut_height = 250,
         donut_radius = 125;
 
-    let arc = d3.arc()
+    var arc = d3.arc()
         .outerRadius(donut_radius - 10)
         .innerRadius(donut_radius - 60);
 
-    let pie = d3.pie()
+    var pie = d3.pie()
         .sort(null)
         .value(function(d) { return d.value; });
 
@@ -252,7 +299,6 @@
         .enter().append("g")
         .attr("class", "arc");
 
-
     var color = d3.scaleOrdinal()
         .range(["#D91E18", "#E87E04", "#F4D03F"])
 
@@ -261,38 +307,6 @@
         .style("fill", function(d) {
             return color(d.data.key);
         });
-
-    donut_svg.append("g")
-        .attr("transform", "translate(" + donut_width / 3 + "," + donut_height / 2 + ")")
-        .append("text")
-        .attr("class", "label")
-        .style("fill", "#333")
-        .style("font-size", "40px")
-        .attr("dy", ".35em") //vertical align middle
-        .text(function(d){
-            return d3.sum(data, function(d) {return d.value;})
-        });
-
-    var counter_table = d3.select('#counter_table').append('table');
-
-    var counter_thead = counter_table.append('thead').append('tr')
-
-    counter_thead.append('th').attr("class", "value");
-    counter_thead.append('th').text("category");
-    counter_thead.append('th').attr("class", "value").text("value");
-
-    var counter_tbody = counter_table.append('tbody')
-    var counter_tr = counter_tbody.selectAll('tr')
-        .data(groupByCategory).enter()
-        .append('tr');
-
-
-
-    counter_tr.append('td').append('span').attr("class", "legend").style("background-color", function(d) {
-        return color(d.key);
-    });
-    counter_tr.append('td').html(function(d) { return d.key; });
-    counter_tr.append('td').html(function(d) { return d.value });
 </script>
 
 </body>
